@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TIDE &amp; THUNDER — Neon Harbor Getaway | Port Tempest</title>
+<style>
+  html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0b0e1a; font-family: "Trebuchet MS", Verdana, sans-serif; }
+  #game-canvas { display: block; width: 100%; height: 100%; }
+  #hud { position: fixed; inset: 0; pointer-events: none; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.8); z-index: 5; }
+  #wanted { position: absolute; top: 14px; left: 16px; font-size: 30px; letter-spacing: 4px; color: #ffd23e; }
+  #wanted .off { color: rgba(255,255,255,.25); }
+  #cash { position: absolute; top: 52px; left: 16px; font-size: 22px; font-weight: bold; color: #7dff9a; }
+  #health-wrap { position: absolute; top: 84px; left: 16px; width: 190px; }
+  #health-label { font-size: 12px; letter-spacing: 2px; color: #ffb3c1; }
+  #health-bar { height: 12px; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.5); border-radius: 3px; overflow: hidden; }
+  #health-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #ff3b5c, #ff7a5c); }
+  #minimap-wrap { position: absolute; top: 14px; right: 16px; text-align: right; }
+  #minimap { width: 190px; height: 190px; border: 2px solid rgba(255,255,255,.65); border-radius: 6px; background: #0a1420; box-shadow: 0 0 18px rgba(0,0,0,.6); }
+  #clock { font-size: 18px; font-weight: bold; margin-top: 4px; }
+  #storm-badge { font-size: 13px; color: #9fd8ff; letter-spacing: 1px; }
+  #objective { position: absolute; left: 50%; bottom: 108px; transform: translateX(-50%); max-width: 640px; text-align: center; font-size: 17px; font-weight: bold; background: rgba(5,10,25,.62); border: 1px solid rgba(255,210,62,.7); border-radius: 8px; padding: 8px 16px; }
+  #objective small { display: block; font-size: 12px; color: #ffd23e; letter-spacing: 2px; }
+  #speed { position: absolute; right: 18px; bottom: 16px; font-size: 34px; font-weight: bold; }
+  #speed small { font-size: 13px; color: #cfe6ff; }
+  #vehicle-name { position: absolute; right: 18px; bottom: 58px; font-size: 14px; color: #ffe9a8; letter-spacing: 1px; }
+  #toast { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); font-size: 26px; font-weight: bold; color: #ffe27a; text-align: center; opacity: 0; transition: opacity .3s; }
+  #hint { position: absolute; left: 16px; bottom: 16px; font-size: 13px; color: #dfe9ff; background: rgba(5,10,25,.5); padding: 6px 10px; border-radius: 6px; line-height: 1.5; }
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; display: none; }
+  #crosshair::before, #crosshair::after { content: ""; position: absolute; background: #fff; box-shadow: 0 0 3px #000; }
+  #crosshair::before { left: 8px; top: 0; width: 2px; height: 18px; }
+  #crosshair::after { left: 0; top: 8px; width: 18px; height: 2px; }
+  #damage-flash { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 55%, rgba(255,0,40,.55) 100%); opacity: 0; z-index: 6; }
+  #bolt-flash { position: fixed; inset: 0; pointer-events: none; background: #cfe4ff; opacity: 0; z-index: 4; }
+  .overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: linear-gradient(160deg, rgba(8,12,30,.88), rgba(40,10,40,.82)); z-index: 10; color: #fff; }
+  .panel { max-width: 620px; padding: 28px 34px; background: rgba(6,10,24,.72); border: 1px solid #ff2e88; border-radius: 14px; box-shadow: 0 0 40px rgba(255,46,136,.35); text-align: center; }
+  .panel h1 { margin: 0 0 4px; font-size: 44px; letter-spacing: 3px; color: #fff; }
+  .panel h1 span { color: #ff2e88; }
+  .panel h2 { margin: 0 0 10px; font-size: 17px; color: #ffd23e; letter-spacing: 4px; }
+  .panel p { font-size: 15px; line-height: 1.55; color: #e8ecff; }
+  .panel .controls { text-align: left; font-size: 14px; line-height: 1.8; background: rgba(255,255,255,.06); border-radius: 8px; padding: 10px 16px; margin: 12px 0; }
+  .panel .controls b { color: #9fd8ff; }
+  button.big { pointer-events: auto; cursor: pointer; font-size: 20px; font-weight: bold; letter-spacing: 2px; color: #fff; background: linear-gradient(90deg, #ff2e88, #ff7a18); border: none; border-radius: 10px; padding: 13px 34px; margin-top: 8px; box-shadow: 0 4px 18px rgba(255,46,136,.5); }
+  button.big:hover { filter: brightness(1.15); }
+  button.ghost { pointer-events: auto; cursor: pointer; font-size: 14px; color: #cfe6ff; background: transparent; border: 1px solid #9fd8ff; border-radius: 8px; padding: 8px 18px; margin-top: 10px; }
+  .hidden { display: none !important; }
+  #mission-list { text-align: left; font-size: 14px; line-height: 1.7; }
+  #mission-list .done { color: #7dff9a; text-decoration: line-through; }
+  #mission-list .now { color: #ffd23e; font-weight: bold; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+</head>
+<body>
+<canvas id="game-canvas"></canvas>
+<div id="bolt-flash"></div>
+<div id="damage-flash"></div>
+<div id="hud">
+  <div id="wanted">☆☆☆☆☆</div>
+  <div id="cash">$0</div>
+  <div id="health-wrap"><div id="health-label">HEALTH</div><div id="health-bar"><div id="health-fill"></div></div></div>
+  <div id="minimap-wrap">
+    <canvas id="minimap" width="190" height="190"></canvas>
+    <div id="clock">21:47 &middot; PORT TEMPEST</div>
+    <div id="storm-badge">&#9925; LIVE STORM &middot; RAIN + LIGHTNING</div>
+  </div>
+  <div id="objective"><small>OBJECTIVE</small><span id="objective-text">Welcome to Port Tempest.</span></div>
+  <div id="vehicle-name"></div>
+  <div id="speed">0 <small>MPH</small></div>
+  <div id="toast"></div>
+  <div id="hint">WASD move / drive &middot; Mouse look &middot; E enter / steal car &middot; Click shoot &middot; Shift run &middot; Esc pause</div>
+  <div id="crosshair"></div>
+</div>
+
+<div id="start-screen" class="overlay">
+  <div class="panel">
+    <h1>TIDE <span>&amp;</span> THUNDER</h1>
+    <h2>NEON HARBOR GETAWAY &middot; PORT TEMPEST</h2>
+    <p>You are <b>Mara Voss</b>, a getaway driver who just burned her old crew. One stormy night in
+    <b>Port Tempest</b> — a sun-soaked harbor city where the rain never really stops — the Harbor Crew
+    offers you a way back in: four jobs, one night, and a police force that never sleeps.
+    Every mission plays under a <b>live storm</b>: rain-slick streets, lightning, flooded roads.</p>
+    <div id="mission-list">
+      <div>1 &middot; FIRST RUN — drive the pickup to the harbor pier &middot; $300</div>
+      <div>2 &middot; FIVE DROPS — collect 5 packages across the city &middot; $600</div>
+      <div>3 &middot; HEAT WAVE — lose a 3-star wanted level &middot; $800</div>
+      <div>4 &middot; STORM BREAK — finale chase to the harbor &middot; $1,500</div>
+    </div>
+    <div class="controls">
+      <b>W A S D</b> — move / drive &nbsp; <b>Mouse</b> — look (click to lock)<br>
+      <b>E</b> — enter car / steal parked &amp; traffic cars &nbsp; <b>Click</b> — fire pistol<br>
+      <b>Shift</b> — sprint &nbsp; <b>Space</b> — handbrake &nbsp; <b>Esc</b> — pause &nbsp; <b>M</b> — mute
+    </div>
+    <button id="start-btn" class="big">START THE NIGHT</button><br>
+    <button id="continue-btn" class="ghost hidden">CONTINUE — SAVED GAME</button>
+    <p style="font-size:12px;color:#9fb2d8">An original open-world crime game. No network needed — runs fully offline.</p>
+  </div>
+</div>
+
+<div id="pause-screen" class="overlay hidden">
+  <div class="panel">
+    <h1>PAUSED</h1>
+    <p id="pause-stats">Take a breath. The storm waits for no one.</p>
+    <button id="resume-btn" class="big">RESUME</button><br>
+    <button id="restart-btn" class="ghost">RESTART NIGHT (RESET SAVE)</button>
+  </div>
+</div>
+
+<div id="end-screen" class="overlay hidden">
+  <div class="panel">
+    <h1 id="end-title">BUSTED</h1>
+    <p id="end-text"></p>
+    <button id="respawn-btn" class="big">BACK ON THE STREETS</button>
+  </div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
